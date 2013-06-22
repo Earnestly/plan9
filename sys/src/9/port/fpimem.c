@@ -4,13 +4,17 @@
  * the following routines depend on memory format, not the machine
  */
 
+enum {
+	Sign	= 1u << 31,
+};
+
 void
 fpis2i(Internal *i, void *v)
 {
 	Single *s = v;
 
-	i->s = (*s & 0x80000000) ? 1: 0;
-	if((*s & ~0x80000000) == 0){
+	i->s = (*s & Sign) ? 1: 0;
+	if((*s & ~Sign) == 0){
 		SetZero(i);
 		return;
 	}
@@ -28,7 +32,7 @@ fpid2i(Internal *i, void *v)
 {
 	Double *d = v;
 
-	i->s = (d->h & 0x80000000) ? 1: 0;
+	i->s = (d->h & Sign) ? 1: 0;
 	i->e = (d->h>>20) & 0x07FF;
 	i->h = ((d->h & 0x000FFFFF)<<(4+NGuardBits))|((d->l>>25) & 0x7F);
 	i->l = (d->l & 0x01FFFFFF)<<NGuardBits;
@@ -71,6 +75,44 @@ fpiw2i(Internal *i, void *v)
 }
 
 void
+fpiv2i(Internal *i, void *v)
+{
+	Vlong w, word = *(Vlong*)v;
+	short e;
+
+	if(word < 0){
+		i->s = 1;
+		word = -word;
+	}
+	else
+		i->s = 0;
+	if(word == 0){
+		SetZero(i);
+		return;
+	}
+	if(word > 0){
+		for (e = 0, w = word; w; w >>= 1, e++)
+			;
+	} else
+		e = 64;
+	if(e > FractBits){
+		i->h = word>>(e - FractBits);
+		i->l = (word & ((1<<(e - FractBits)) - 1))<<(2*FractBits - e);
+	}
+	else {
+		i->h = word<<(FractBits - e);
+		i->l = 0;
+	}
+	i->e = (e - 1) + ExpBias;
+}
+
+/*
+ * Note that all of these conversions from Internal format
+ * potentially alter *i, so it should be a disposable copy
+ * of the value to be converted.
+ */
+
+void
 fpii2s(void *v, Internal *i)
 {
 	short e;
@@ -81,7 +123,7 @@ fpii2s(void *v, Internal *i)
 		i->h &= ~HiddenBit;
 	else
 		i->e--;
-	*s = i->s ? 0x80000000: 0;
+	*s = i->s ? Sign: 0;
 	e = i->e;
 	if(e < ExpBias){
 		if(e <= (ExpBias - SingleExpBias))
@@ -109,7 +151,7 @@ fpii2d(void *v, Internal *i)
 		i->e--;
 	i->l = ((i->h & GuardMask)<<25)|(i->l>>NGuardBits);
 	i->h >>= NGuardBits;
-	d->h = i->s ? 0x80000000: 0;
+	d->h = i->s ? Sign: 0;
 	d->h |= (i->e<<20)|((i->h & 0x00FFFFFF)>>4);
 	d->l = (i->h<<28)|i->l;
 }
@@ -128,6 +170,27 @@ fpii2w(Word *word, Internal *i)
 		w = 0x7FFFFFFF;
 	else if(e > FractBits)
 		w = (i->h<<(e - FractBits))|(i->l>>(2*FractBits - e));
+	else
+		w = i->h>>(FractBits-e);
+	if(i->s)
+		w = -w;
+	*word = w;
+}
+
+void
+fpii2v(Vlong *word, Internal *i)
+{
+	Vlong w;
+	short e;
+
+	fpiround(i);
+	e = (i->e - ExpBias) + 1;
+	if(e <= 0)
+		w = 0;
+	else if(e > 63)
+		w = (1ull<<63) - 1;		/* maxlong */
+	else if(e > FractBits)
+		w = (Vlong)i->h<<(e - FractBits) | i->l>>(2*FractBits - e);
 	else
 		w = i->h>>(FractBits-e);
 	if(i->s)

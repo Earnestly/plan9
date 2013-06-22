@@ -1,9 +1,15 @@
+#ifndef nil
+#include <u.h>
+#endif
+
 typedef long Word;
+typedef long long Vlong;
 typedef unsigned long Single;
-typedef struct {
-	unsigned long l;
-	unsigned long h;
-} Double;
+
+/* use u.h's FPdbleword */
+#define Double	FPdbleword
+#define h hi
+#define l lo
 
 enum {
 	FractBits	= 28,
@@ -24,8 +30,10 @@ enum {
 };
 
 typedef struct {
+	/* order matters: must start with s, e, l, h in that order */
 	unsigned char s;
 	short e;
+	/* double bits */
 	long l;				/* 0000FFFFFFFFFFFFFFFFFFFFFFFFFGGG */
 	long h;				/* 0000HFFFFFFFFFFFFFFFFFFFFFFFFFFF */
 } Internal;
@@ -56,6 +64,8 @@ extern void fpinormalise(Internal*);
 extern void fpis2i(Internal *, void *);
 extern void fpid2i(Internal *, void *);
 extern void fpiw2i(Internal *, void *);
+extern void fpiv2i(Internal *, void *);
 extern void fpii2s(void *, Internal *);
 extern void fpii2d(void *, Internal *);
 extern void fpii2w(Word *, Internal *);
+extern void fpii2v(Vlong *, Internal *);

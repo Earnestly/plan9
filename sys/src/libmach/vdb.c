@@ -28,7 +28,12 @@ Machdata mipsmach =
 	mipsexcep,		/* print exception */
 	0,			/* breakpoint fixup */
 	beieeesftos,		/* single precision float printer */
-	beieeedftos,		/* double precisioin float printer */
+	/*
+	 * this works for doubles in memory, but FP register pairs have
+	 * the words in little-endian order, so they will print as
+	 * denormalised doubles.
+	 */
+	beieeedftos,		/* double precision float printer */
 	mipsfoll,		/* following addresses */
 	mipsinst,		/* print instruction */
 	mipsdas,		/* dissembler */
@@ -48,7 +53,7 @@ Machdata mipsmachle =
 	mipsexcep,		/* print exception */
 	0,			/* breakpoint fixup */
 	leieeesftos,		/* single precision float printer */
-	leieeedftos,		/* double precisioin float printer */
+	leieeedftos,		/* double precision float printer */
 	mipsfoll,		/* following addresses */
 	mipsinst,		/* print instruction */
 	mipsdas,		/* dissembler */
@@ -71,7 +76,7 @@ Machdata mipsmach2le =
 	mipsexcep,		/* print exception */
 	0,			/* breakpoint fixup */
 	leieeesftos,		/* single precision float printer */
-	leieeedftos,		/* double precisioin float printer */
+	leieeedftos,		/* double precision float printer */
 	mipsfoll,		/* following addresses */
 	mipsinst,		/* print instruction */
 	mipsdas,		/* dissembler */
@@ -94,7 +99,7 @@ Machdata mipsmach2be =
 	mipsexcep,		/* print exception */
 	0,			/* breakpoint fixup */
 	beieeesftos,		/* single precision float printer */
-	beieeedftos,		/* double precisioin float printer */
+	beieeedftos,		/* double precision float printer */
 	mipsfoll,		/* following addresses */
 	mipsinst,		/* print instruction */
 	mipsdas,		/* dissembler */
@@ -131,7 +136,8 @@ mipsexcep(Map *map, Rgetter rget)
 	long c;
 
 	c = (*rget)(map, "CAUSE");
-	if(c & 0x00002000)	/* INTR3 */
+	/* i don't think this applies to any current machines */
+	if(0 && c & 0x00002000)	/* INTR3 */
 		e = 16;		/* Floating point exception */
 	else
 		e = (c>>2)&0x0F;
